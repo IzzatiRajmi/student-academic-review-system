@@ -8,25 +8,32 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ReviewRequest extends Model
 {
-    public const PENDING = 'pending';
-    public const APPROVED = 'approved';
-    public const REJECTED = 'rejected';
+    public const PENDING = 'Pending';
+    public const APPROVED = 'Approved';
+    public const REJECTED = 'Rejected';
 
-    protected $fillable = ['subject_code', 'justification'];
+    protected $fillable = ['review_category_id', 'subject_code', 'justification'];
 
     protected function casts(): array
     {
-        return ['decided_at' => 'datetime'];
+        return ['processed_at' => 'datetime'];
     }
 
+    /** Student who submitted the request. */
     public function student(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'student_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function decider(): BelongsTo
+    public function category(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'decided_by');
+        return $this->belongsTo(ReviewCategory::class, 'review_category_id');
+    }
+
+    /** Admin who processed the request. */
+    public function processor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'processed_by');
     }
 
     public function scopePending(Builder $query): Builder
@@ -40,10 +47,10 @@ class ReviewRequest extends Model
     }
 
     /** Status counts for the dashboard cards. */
-    public static function stats(?int $studentId = null): array
+    public static function stats(?int $userId = null): array
     {
         $counts = static::query()
-            ->when($studentId, fn ($q) => $q->where('student_id', $studentId))
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->selectRaw('status, COUNT(*) as c')
             ->groupBy('status')
             ->pluck('c', 'status');
@@ -63,11 +70,12 @@ class ReviewRequest extends Model
         return [
             'student_name' => $this->student->name,
             'subject_code' => $this->subject_code,
+            'category' => $this->category?->name,
             'justification' => $this->justification,
             'submitted' => $this->created_at?->format('d/m/Y'),
-            'status' => $this->status,
-            'decided' => $this->decided_at?->format('d/m/Y'),
-            'comment' => $this->admin_comment ?? '',
+            'status' => strtolower($this->status),
+            'decided' => $this->processed_at?->format('d/m/Y'),
+            'comment' => $this->admin_remarks ?? '',
         ];
     }
 }

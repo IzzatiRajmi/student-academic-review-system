@@ -25,17 +25,16 @@ class ReviewRequestForm extends FormRequest
 
     public function rules(): array
     {
-        $ignoreId = $this->route('id');
-
         return [
+            'review_category_id' => ['required', 'integer', Rule::exists('review_categories', 'id')],
             'subject_code' => [
                 'required',
                 'regex:/^[A-Z]{3}[0-9]{4}$/',
                 // No second pending request for the same subject
                 Rule::unique('review_requests', 'subject_code')
-                    ->where('student_id', $this->user()->id)
+                    ->where('user_id', $this->user()->id)
                     ->where('status', ReviewRequest::PENDING)
-                    ->ignore($ignoreId),
+                    ->ignore($this->route('id')),
             ],
             'justification' => ['required', 'string', 'min:20', 'max:1000'],
         ];
@@ -44,6 +43,9 @@ class ReviewRequestForm extends FormRequest
     public function messages(): array
     {
         return [
+            'review_category_id.required' => 'Please choose a review category.',
+            'review_category_id.integer' => 'Please choose a review category.',
+            'review_category_id.exists' => 'Please choose a valid review category.',
             'subject_code.required' => 'Subject code is required.',
             'subject_code.regex' => 'Use 3 letters followed by 4 digits, e.g. DES3083.',
             'subject_code.unique' => 'You already have a pending request for this subject.',

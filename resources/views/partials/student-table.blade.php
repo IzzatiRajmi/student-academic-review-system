@@ -8,13 +8,14 @@
     <div class="table-wrap">
         <table class="table">
             <thead>
-            <tr><th scope="col">No</th><th scope="col">Subject Code</th><th scope="col">Status</th><th scope="col">Date</th><th scope="col">Action</th></tr>
+            <tr><th scope="col">No</th><th scope="col">Subject Code</th><th scope="col">Category</th><th scope="col">Status</th><th scope="col">Date</th><th scope="col">Action</th></tr>
             </thead>
             <tbody>
             @foreach ($requests as $r)
                 <tr>
                     <td data-label="No">{{ $loop->iteration }}</td>
                     <td data-label="Subject Code"><strong>{{ $r->subject_code }}</strong></td>
+                    <td data-label="Category">{{ $r->category?->name }}</td>
                     <td data-label="Status">@include('partials.status-badge', ['status' => $r->status])</td>
                     <td data-label="Date">{{ $r->created_at->format('d/m/Y') }}</td>
                     <td data-label="Action">

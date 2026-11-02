@@ -41,6 +41,7 @@
         <dl class="details">
             <dt>Student Name</dt><dd data-v="student_name"></dd>
             <dt>Subject Code</dt><dd data-v="subject_code"></dd>
+            <dt>Review Category</dt><dd data-v="category"></dd>
             <dt>Justification</dt><dd data-v="justification" class="pre"></dd>
             <dt>Submitted Date</dt><dd data-v="submitted"></dd>
             <dt>Status</dt><dd data-v="status"></dd>

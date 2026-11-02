@@ -6,14 +6,17 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * USERS (ERD): user_id (id), name, email, password, role, created_at, updated_at
+     */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('username', 50)->unique();
-            $table->string('name', 120);
+            $table->string('name');
+            $table->string('email')->unique();
             $table->string('password');
-            $table->enum('role', ['student', 'admin'])->default('student');
+            $table->string('role')->default('student'); // student | admin
             $table->rememberToken();
             $table->timestamps();
         });

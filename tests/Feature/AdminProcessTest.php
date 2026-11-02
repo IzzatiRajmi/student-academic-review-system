@@ -45,41 +45,43 @@ class AdminProcessTest extends TestCase
             ->assertSessionHasErrors(['decision' => 'Please choose Approve or Reject.']);
     }
 
-    public function test_tc21_reject_requires_comment(): void
+    public function test_tc21_reject_requires_remarks(): void
     {
-        $this->post("/admin/requests/{$this->pendingRequest()->id}/process", ['decision' => 'rejected', 'comment' => ''])
-            ->assertSessionHasErrors(['comment' => 'Please give a reason when rejecting a request.']);
+        $this->post("/admin/requests/{$this->pendingRequest()->id}/process", ['decision' => 'Rejected', 'admin_remarks' => ''])
+            ->assertSessionHasErrors(['admin_remarks' => 'Please give a reason when rejecting a request.']);
         $this->assertTrue($this->pendingRequest()->isPending());
     }
 
-    public function test_tc22_approve_with_comment(): void
+    public function test_tc22_approve_with_remarks(): void
     {
         $r = $this->pendingRequest();
 
-        $this->get("/admin/requests/{$r->id}/process")->assertOk()->assertSee('Process Academic Review Request');
-        $this->post("/admin/requests/{$r->id}/process", ['decision' => 'approved', 'comment' => 'Re-marked. Grade updated to A-.'])
+        $this->get("/admin/requests/{$r->id}/process")->assertOk()
+            ->assertSee('Process Academic Review Request')
+            ->assertSee('Semakan Markah Peperiksaan');
+        $this->post("/admin/requests/{$r->id}/process", ['decision' => 'Approved', 'admin_remarks' => 'Re-marked. Grade updated to A-.'])
             ->assertRedirect('/admin/requests/pending')
             ->assertSessionHas('success');
 
         $r->refresh();
-        $this->assertSame('approved', $r->status);
-        $this->assertSame('Re-marked. Grade updated to A-.', $r->admin_comment);
-        $this->assertSame($this->user('admin')->id, $r->decided_by);
-        $this->assertNotNull($r->decided_at);
+        $this->assertSame('Approved', $r->status);
+        $this->assertSame('Re-marked. Grade updated to A-.', $r->admin_remarks);
+        $this->assertSame($this->user('admin')->id, $r->processed_by);
+        $this->assertNotNull($r->processed_at);
         $this->get('/admin/requests/pending')->assertViewHas('requests', fn ($x) => $x->count() === 2);
     }
 
     public function test_tc23_processed_request_cannot_be_processed_again(): void
     {
-        $r = ReviewRequest::where('status', 'approved')->firstOrFail();
+        $r = ReviewRequest::where('status', 'Approved')->firstOrFail();
 
         $this->get("/admin/requests/{$r->id}/process")
             ->assertRedirect('/admin/requests/pending')
             ->assertSessionHas('error', 'This request has already been approved.');
 
-        $this->post("/admin/requests/{$r->id}/process", ['decision' => 'rejected', 'comment' => 'Changing my mind'])
+        $this->post("/admin/requests/{$r->id}/process", ['decision' => 'Rejected', 'admin_remarks' => 'Changing my mind'])
             ->assertSessionHas('error');
-        $this->assertSame('approved', $r->fresh()->status);
+        $this->assertSame('Approved', $r->fresh()->status);
     }
 
     public function test_unknown_request_returns_404(): void
@@ -90,7 +92,7 @@ class AdminProcessTest extends TestCase
     public function test_student_sees_decision_after_processing(): void
     {
         $r = $this->pendingRequest();
-        $this->post("/admin/requests/{$r->id}/process", ['decision' => 'approved', 'comment' => 'Grade updated.']);
+        $this->post("/admin/requests/{$r->id}/process", ['decision' => 'Approved', 'admin_remarks' => 'Grade updated.']);
 
         $this->actingAs($this->user('syamimi'))
             ->get('/student/dashboard')

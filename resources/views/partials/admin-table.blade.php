@@ -9,7 +9,7 @@
         <table class="table">
             <thead>
             <tr>
-                <th scope="col">No</th><th scope="col">Student Name</th><th scope="col">Subject Code</th>
+                <th scope="col">No</th><th scope="col">Student Name</th><th scope="col">Subject Code</th><th scope="col">Category</th>
                 @if ($showStatus)<th scope="col">Status</th>@endif
                 <th scope="col">Date</th><th scope="col">Action</th>
             </tr>
@@ -20,6 +20,7 @@
                     <td data-label="No">{{ $loop->iteration }}</td>
                     <td data-label="Student Name">{{ $r->student->name }}</td>
                     <td data-label="Subject Code"><strong>{{ $r->subject_code }}</strong></td>
+                    <td data-label="Category">{{ $r->category?->name }}</td>
                     @if ($showStatus)
                         <td data-label="Status">@include('partials.status-badge', ['status' => $r->status])</td>
                     @endif

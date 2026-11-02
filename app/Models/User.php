@@ -10,7 +10,7 @@ class User extends Authenticatable
     public const ROLE_STUDENT = 'student';
     public const ROLE_ADMIN = 'admin';
 
-    protected $fillable = ['username', 'name', 'password', 'role'];
+    protected $fillable = ['name', 'email', 'password', 'role'];
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -19,9 +19,16 @@ class User extends Authenticatable
         return ['password' => 'hashed'];
     }
 
+    /** A student submits many review requests (review_requests.user_id). */
     public function reviewRequests(): HasMany
     {
-        return $this->hasMany(ReviewRequest::class, 'student_id');
+        return $this->hasMany(ReviewRequest::class, 'user_id');
+    }
+
+    /** An admin processes many review requests (review_requests.processed_by). */
+    public function processedRequests(): HasMany
+    {
+        return $this->hasMany(ReviewRequest::class, 'processed_by');
     }
 
     public function isAdmin(): bool

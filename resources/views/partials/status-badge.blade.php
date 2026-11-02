@@ -1,1 +1,1 @@
-<span class="badge badge-{{ $status }}">{{ ucfirst($status) }}</span>
+<span class="badge badge-{{ strtolower($status) }}">{{ ucfirst(strtolower($status)) }}</span>

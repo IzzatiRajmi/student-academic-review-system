@@ -55,7 +55,7 @@
       var data;
       try { data = JSON.parse(viewBtn.getAttribute('data-view')); } catch (err) { return; }
       var m = document.getElementById('view-modal');
-      ['student_name', 'subject_code', 'justification', 'submitted', 'comment'].forEach(function (k) {
+      ['student_name', 'subject_code', 'category', 'justification', 'submitted', 'comment'].forEach(function (k) {
         setText(m, k, data[k]);
       });
       var decided = data.status === 'pending' ? 'Not decided yet' : data.decided;

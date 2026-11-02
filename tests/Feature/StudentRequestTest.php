@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ReviewCategory;
 use App\Models\ReviewRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -19,14 +20,19 @@ class StudentRequestTest extends TestCase
         $this->actingAs($this->user('syamimi'));
     }
 
+    private function categoryId(): int
+    {
+        return ReviewCategory::where('name', 'Semakan Gred Akhir')->value('id');
+    }
+
     private function otherStudentsRequest(): ReviewRequest
     {
-        return ReviewRequest::where('student_id', $this->user('aminah')->id)->firstOrFail();
+        return ReviewRequest::where('user_id', $this->user('aminah')->id)->firstOrFail();
     }
 
     private function approvedOwnRequest(): ReviewRequest
     {
-        return ReviewRequest::where('student_id', $this->user('syamimi')->id)->where('status', 'approved')->firstOrFail();
+        return ReviewRequest::where('user_id', $this->user('syamimi')->id)->where('status', 'Approved')->firstOrFail();
     }
 
     public function test_tc08_invalid_input_is_rejected_and_kept(): void
@@ -35,26 +41,38 @@ class StudentRequestTest extends TestCase
             ->post('/student/requests', ['subject_code' => 'ab12', 'justification' => 'short'])
             ->assertRedirect('/student/requests/create')
             ->assertSessionHasErrors([
+                'review_category_id' => 'Please choose a review category.',
                 'subject_code' => 'Use 3 letters followed by 4 digits, e.g. DES3083.',
                 'justification' => 'Please explain a little more (at least 20 characters).',
             ])
             ->assertSessionHasInput('subject_code', 'ab12');
     }
 
+    public function test_tc08b_unknown_category_is_rejected(): void
+    {
+        $this->post('/student/requests', ['review_category_id' => 999, 'subject_code' => 'DES3083', 'justification' => 'Please review my final project marks for this subject.'])
+            ->assertSessionHasErrors(['review_category_id' => 'Please choose a valid review category.']);
+    }
+
     public function test_tc09_duplicate_pending_subject_is_rejected(): void
     {
-        $this->post('/student/requests', ['subject_code' => 'KPF3012', 'justification' => 'Another request for the same subject code please.'])
+        $this->post('/student/requests', ['review_category_id' => $this->categoryId(), 'subject_code' => 'KPF3012', 'justification' => 'Another request for the same subject code please.'])
             ->assertSessionHasErrors(['subject_code' => 'You already have a pending request for this subject.']);
     }
 
     public function test_tc10_valid_request_is_saved_as_pending(): void
     {
-        $this->post('/student/requests', ['subject_code' => 'des 3083', 'justification' => 'Please review my final project marks for this subject.'])
+        $this->get('/student/requests/create')->assertOk()->assertSee('Semakan Markah Peperiksaan');
+
+        $this->post('/student/requests', ['review_category_id' => $this->categoryId(), 'subject_code' => 'des 3083', 'justification' => 'Please review my final project marks for this subject.'])
             ->assertRedirect('/student/requests')
             ->assertSessionHas('success', 'Request for DES3083 submitted successfully.');
 
         $this->assertDatabaseHas('review_requests', [
-            'student_id' => $this->user('syamimi')->id, 'subject_code' => 'DES3083', 'status' => 'pending',
+            'user_id' => $this->user('syamimi')->id,
+            'review_category_id' => $this->categoryId(),
+            'subject_code' => 'DES3083',
+            'status' => 'Pending',
         ]);
         $this->get('/student/dashboard')->assertViewHas('stats', fn ($s) => $s['total'] === 4 && $s['pending'] === 2);
     }
@@ -64,11 +82,13 @@ class StudentRequestTest extends TestCase
         $r = ReviewRequest::where('subject_code', 'KPF3012')->firstOrFail();
 
         $this->get("/student/requests/{$r->id}/edit")->assertOk()->assertSee('Update Academic Review Request');
-        $this->put("/student/requests/{$r->id}", ['subject_code' => 'KPF3012', 'justification' => 'Updated justification text with enough length.'])
+        $this->put("/student/requests/{$r->id}", ['review_category_id' => $this->categoryId(), 'subject_code' => 'KPF3012', 'justification' => 'Updated justification text with enough length.'])
             ->assertRedirect('/student/requests')
             ->assertSessionHas('success');
 
-        $this->assertSame('Updated justification text with enough length.', $r->fresh()->justification);
+        $r->refresh();
+        $this->assertSame('Updated justification text with enough length.', $r->justification);
+        $this->assertSame($this->categoryId(), $r->review_category_id);
     }
 
     public function test_tc12_approved_request_cannot_be_updated(): void
@@ -79,7 +99,7 @@ class StudentRequestTest extends TestCase
             ->assertRedirect('/student/requests')
             ->assertSessionHas('error', 'This request has already been approved and can no longer be updated.');
 
-        $this->put("/student/requests/{$r->id}", ['subject_code' => 'XYZ1234', 'justification' => 'Trying to change an approved request.'])
+        $this->put("/student/requests/{$r->id}", ['review_category_id' => $this->categoryId(), 'subject_code' => 'XYZ1234', 'justification' => 'Trying to change an approved request.'])
             ->assertRedirect('/student/requests');
         $this->assertNotSame('XYZ1234', $r->fresh()->subject_code);
     }
@@ -118,7 +138,7 @@ class StudentRequestTest extends TestCase
 
     public function test_tc24_script_input_is_escaped(): void
     {
-        $this->post('/student/requests', ['subject_code' => 'DES3083', 'justification' => '<script>alert(1)</script> please review my final exam grade.']);
+        $this->post('/student/requests', ['review_category_id' => $this->categoryId(), 'subject_code' => 'DES3083', 'justification' => '<script>alert(1)</script> please review my final exam grade.']);
 
         $html = $this->get('/student/requests')->getContent();
         $this->assertStringNotContainsString('<script>alert(1)</script>', $html);
@@ -130,6 +150,7 @@ class StudentRequestTest extends TestCase
         $this->get('/student/requests')
             ->assertOk()
             ->assertSee('KPF3012')
+            ->assertSee('Semakan Markah Peperiksaan')
             ->assertDontSee('KPF3022'); // Aminah's request
     }
 }

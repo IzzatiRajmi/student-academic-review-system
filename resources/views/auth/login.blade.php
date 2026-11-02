@@ -24,15 +24,15 @@
     <form method="POST" action="{{ route('login.attempt') }}" novalidate data-loading-form>
         @csrf
         <div class="field">
-            <label for="username">Username</label>
-            <input id="username" name="username" type="text" autocomplete="username" required
-                   placeholder="Enter your username" value="{{ old('username') }}" @if (! old('username')) autofocus @endif>
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" autocomplete="username" required
+                   placeholder="Enter your email" value="{{ old('email') }}" @if (! old('email')) autofocus @endif>
         </div>
         <div class="field">
             <label for="password">Password</label>
             <div class="password-wrap">
                 <input id="password" name="password" type="password" autocomplete="current-password" required
-                       placeholder="Enter your password" @if (old('username')) autofocus @endif>
+                       placeholder="Enter your password" @if (old('email')) autofocus @endif>
                 <button type="button" class="icon-btn pw-toggle" aria-label="Show password" data-pw-toggle>
                     <span class="show-ic"><x-icon name="eye" /></span><span class="hide-ic"><x-icon name="eye-off" /></span>
                 </button>

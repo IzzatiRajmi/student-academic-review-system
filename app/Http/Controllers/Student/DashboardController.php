@@ -14,7 +14,7 @@ class DashboardController extends Controller
 
         return view('student.dashboard', [
             'stats' => ReviewRequest::stats($user->id),
-            'requests' => $user->reviewRequests()->with('student')->latest()->latest('id')->take(5)->get(),
+            'requests' => $user->reviewRequests()->with(['student', 'category'])->latest()->latest('id')->take(5)->get(),
         ]);
     }
 }

@@ -27,6 +27,19 @@
                 @error('subject_code')<small id="subject_err" class="error-text">{{ $message }}</small>@enderror
             </div>
 
+            <div class="field @error('review_category_id') has-error @enderror">
+                <label for="review_category_id">Review Category <span class="req" aria-hidden="true">*</span></label>
+                @php $selected = (string) old('review_category_id', $reviewRequest?->review_category_id); @endphp
+                <select id="review_category_id" name="review_category_id" required
+                        @error('review_category_id') aria-invalid="true" aria-describedby="cat_err" @enderror>
+                    <option value="">-- Select category --</option>
+                    @foreach ($categories as $category)
+                        <option value="{{ $category->id }}" @selected($selected === (string) $category->id)>{{ $category->name }}</option>
+                    @endforeach
+                </select>
+                @error('review_category_id')<small id="cat_err" class="error-text">{{ $message }}</small>@enderror
+            </div>
+
             <div class="field @error('justification') has-error @enderror">
                 <label for="justification">Justification <span class="req" aria-hidden="true">*</span></label>
                 <textarea id="justification" name="justification" rows="7" maxlength="1000" required

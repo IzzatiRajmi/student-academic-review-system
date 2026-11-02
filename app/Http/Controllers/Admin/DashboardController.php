@@ -11,7 +11,7 @@ class DashboardController extends Controller
     {
         return view('admin.dashboard', [
             'stats' => ReviewRequest::stats(),
-            'requests' => ReviewRequest::pending()->with('student')->oldest()->oldest('id')->take(5)->get(),
+            'requests' => ReviewRequest::pending()->with(['student', 'category'])->oldest()->oldest('id')->take(5)->get(),
         ]);
     }
 }

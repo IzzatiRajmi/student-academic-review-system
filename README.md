@@ -40,11 +40,11 @@ If your MySQL user has a password, edit `DB_USERNAME` / `DB_PASSWORD` in `.env` 
 
 ### Sample logins
 
-| Role    | Username | Password |
-|---------|----------|----------|
-| Admin   | `admin`   | `Admin@123` |
-| Student | `syamimi` | `Student@123` |
-| Student | `aminah`, `amani`, `nurul` | `Student@123` |
+| Role    | Email | Password |
+|---------|-------|----------|
+| Admin   | `admin@sars.test` | `Admin@123` |
+| Student | `syamimi@siswa.upsi.edu.my` | `Student@123` |
+| Student | `aminah@`, `amani@`, `nurul@siswa.upsi.edu.my` | `Student@123` |
 
 Sample data matches the wireframe: admin sees 10 total / 3 pending / 6 approved / 1 rejected; Syamimi sees 3 / 1 / 2 / 0.
 
@@ -90,11 +90,12 @@ app/
 │   │   └── Admin/ProcessRequestController.php Pending, all requests, approve/reject
 │   ├── Middleware/EnsureRole.php              role:student / role:admin
 │   └── Requests/ReviewRequestForm.php         Add/Update validation rules
-├── Models/User.php                            username, name, role
+├── Models/User.php                            name, email, role
+├── Models/ReviewCategory.php                  review categories
 └── Models/ReviewRequest.php                   status rules, dashboard stats
 database/
-├── migrations/                                users, sessions, cache, jobs, review_requests
-└── seeders/DatabaseSeeder.php                 sample users and requests
+├── migrations/                                users, review_categories, review_requests (+ Laravel sessions, cache, jobs)
+└── seeders/                                   DatabaseSeeder (users, requests), ReviewCategorySeeder
 resources/views/
 ├── layouts/app.blade.php                      top bar + sidebar
 ├── partials/                                  stat cards, tables, modals
@@ -122,15 +123,20 @@ tests/Feature/                                 AuthTest, StudentRequestTest, Adm
 | GET | `/admin/requests` | All requests | Admin |
 | GET/POST | `/admin/requests/{id}/process` | Approve / reject | Admin (pending only) |
 
-### Data model
-- **users** — id, username (unique), name, password (hashed), role (`student`/`admin`), timestamps
-- **review_requests** — id, student_id → users, subject_code, justification, status (`pending`/`approved`/`rejected`), admin_comment, decided_by → users, decided_at, timestamps
+### Data model (follows the group ERD)
+- **users** — id (user_id), name, email (unique), password (hashed), role (`student`/`admin`), created_at, updated_at
+- **review_categories** — id (review_category_id), name, created_at, updated_at
+- **review_requests** — id (review_request_id), user_id → users, review_category_id → review_categories, subject_code, justification, status (`Pending`/`Approved`/`Rejected`), processed_by → users, admin_remarks, processed_at, created_at, updated_at
+
+Relationships: a user **submits** many requests (user_id); an admin **processes** many requests (processed_by); a category **classifies** many requests (review_category_id). Laravel names each primary key `id`.
+
+Categories (same as the dev branch): Semakan Markah Peperiksaan, Semakan Markah Kerja Kursus, Semakan Gred Akhir, Keputusan Pentadbiran Akademik.
 
 ---
 
 ## 5. MVP scope
 
-**Must have (done)** — login/logout with roles; student dashboard, add, view, update, delete (pending only); admin dashboard, pending list, all requests, approve/reject with comment; validation and messages; responsive layout.
+**Must have (done)** — login/logout with roles (email + password); review category on every request; student dashboard, add, view, update, delete (pending only); admin dashboard, pending list, all requests, approve/reject with comment; validation and messages; responsive layout.
 
 **Should have (done)** — duplicate pending check per subject; comment required when rejecting; login lockout (5 attempts / 5 minutes); delete confirmation.
 
@@ -138,7 +144,7 @@ tests/Feature/                                 AuthTest, StudentRequestTest, Adm
 
 ## 6. Assumptions
 1. Subject code = 3 letters + 4 digits (e.g. `DES3083`), auto-uppercased.
-2. Justification 20–1000 characters.
+2. Justification 20–1000 characters; review category is required.
 3. "Forgot password?" shows a contact-admin message.
 4. Accounts are created by the admin/seeder (no sign-up screen in the wireframe).
 5. Comment is required when rejecting, optional when approving.
@@ -151,29 +157,29 @@ tests/Feature/                                 AuthTest, StudentRequestTest, Adm
 - CSRF token on every form (`@csrf`); expired token → back to login with a message
 - Session regenerated on login, invalidated on logout
 - `role` middleware + ownership and status checks on the server
-- Login rate limit: 5 failed attempts per username + IP → 5-minute lock
+- Login rate limit: 5 failed attempts per email + IP → 5-minute lock
 
 ## 8. Test results (v1.0)
-- **PHPUnit:** 28 tests, 101 assertions, all passed (`php artisan test`).
-- **Browser check (Chromium):** 17 checks passed — add, delete via modal, view modal, logout, approve, mobile menu, no horizontal scroll at 1366 / 820 / 390 px, no JavaScript errors.
+- **PHPUnit:** 29 tests, 109 assertions, all passed (`php artisan test`).
+- **Browser check (Chromium):** 27 checks passed — add with category, delete via modal, edit keeps category, view modal, logout, approve, mobile menu, no horizontal scroll at 1366 / 820 / 390 px, no JavaScript errors.
 - Tested here with SQLite; **MySQL was not run in this environment** — run `php artisan migrate --seed` and the manual checks below once on Laragon/XAMPP.
 
 ### Manual test checklist
 | # | Test | Expected |
 |---|---|---|
 | 1 | Open `/student/dashboard` without login | Redirect to login, "Please log in" |
-| 2 | Wrong password | "Incorrect username or password" |
+| 2 | Wrong password | "Incorrect email or password" |
 | 3 | 5 wrong passwords | Locked for 5 minutes |
-| 4 | Login `syamimi` | Student dashboard 3/1/2/0 |
+| 4 | Login `syamimi@siswa.upsi.edu.my` | Student dashboard 3/1/2/0 |
 | 5 | Student opens `/admin/dashboard` | Blocked |
-| 6 | Add request with empty / invalid fields | Field errors |
+| 6 | Add request with empty / invalid fields (no category) | Field errors |
 | 7 | Add `KPF3012` again | Duplicate error |
 | 8 | Add valid request | Success, Pending |
 | 9 | Edit pending request | Saved |
 | 10 | Delete → Cancel / Delete | Kept / removed |
 | 11 | View button | Pop-up with details |
 | 12 | Logout → Cancel / Logout | Stay / back to login |
-| 13 | Login `admin` | 10/3/6/1 |
+| 13 | Login `admin@sars.test` | 10/3/6/1 |
 | 14 | Process with no decision / reject without comment | Errors |
 | 15 | Approve | Removed from pending |
 | 16 | Phone size in DevTools | Hamburger menu, card tables |

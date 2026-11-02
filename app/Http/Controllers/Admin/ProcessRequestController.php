@@ -13,7 +13,7 @@ class ProcessRequestController extends Controller
     public function pending()
     {
         return view('admin.pending', [
-            'requests' => ReviewRequest::pending()->with('student')->oldest()->oldest('id')->get(),
+            'requests' => ReviewRequest::pending()->with(['student', 'category'])->oldest()->oldest('id')->get(),
         ]);
     }
 
@@ -21,43 +21,41 @@ class ProcessRequestController extends Controller
     public function index()
     {
         return view('admin.requests', [
-            'requests' => ReviewRequest::with('student')->latest()->latest('id')->get(),
+            'requests' => ReviewRequest::with(['student', 'category'])->latest()->latest('id')->get(),
         ]);
     }
 
     public function edit(ReviewRequest $reviewRequest)
     {
         if (! $reviewRequest->isPending()) {
-            return redirect()->route('admin.requests.pending')
-                ->with('error', "This request has already been {$reviewRequest->status}.");
+            return $this->alreadyProcessed($reviewRequest);
         }
 
-        return view('admin.process', ['reviewRequest' => $reviewRequest->load('student')]);
+        return view('admin.process', ['reviewRequest' => $reviewRequest->load(['student', 'category'])]);
     }
 
     public function update(Request $request, ReviewRequest $reviewRequest)
     {
         if (! $reviewRequest->isPending()) {
-            return redirect()->route('admin.requests.pending')
-                ->with('error', "This request has already been {$reviewRequest->status}.");
+            return $this->alreadyProcessed($reviewRequest);
         }
 
         $data = $request->validate([
             'decision' => ['required', Rule::in([ReviewRequest::APPROVED, ReviewRequest::REJECTED])],
-            'comment' => ['nullable', 'string', 'max:500', 'required_if:decision,'.ReviewRequest::REJECTED],
+            'admin_remarks' => ['nullable', 'string', 'max:500', 'required_if:decision,'.ReviewRequest::REJECTED],
         ], [
             'decision.required' => 'Please choose Approve or Reject.',
             'decision.in' => 'Please choose Approve or Reject.',
-            'comment.required_if' => 'Please give a reason when rejecting a request.',
-            'comment.max' => 'Comment must be 500 characters or fewer.',
+            'admin_remarks.required_if' => 'Please give a reason when rejecting a request.',
+            'admin_remarks.max' => 'Remarks must be 500 characters or fewer.',
         ]);
 
         // Only update if still pending (prevents two admins processing the same request)
         $updated = ReviewRequest::whereKey($reviewRequest->id)->pending()->update([
             'status' => $data['decision'],
-            'admin_comment' => $data['comment'] ?: null,
-            'decided_by' => $request->user()->id,
-            'decided_at' => now(),
+            'admin_remarks' => $data['admin_remarks'] ?: null,
+            'processed_by' => $request->user()->id,
+            'processed_at' => now(),
             'updated_at' => now(),
         ]);
 
@@ -66,7 +64,17 @@ class ProcessRequestController extends Controller
                 ->with('error', 'This request was already processed by someone else.');
         }
 
+        $status = strtolower($data['decision']);
+
         return redirect()->route('admin.requests.pending')->with('success',
-            "Request from {$reviewRequest->student->name} ({$reviewRequest->subject_code}) {$data['decision']}.");
+            "Request from {$reviewRequest->student->name} ({$reviewRequest->subject_code}) {$status}.");
+    }
+
+    private function alreadyProcessed(ReviewRequest $reviewRequest)
+    {
+        $status = strtolower($reviewRequest->status);
+
+        return redirect()->route('admin.requests.pending')
+            ->with('error', "This request has already been {$status}.");
     }
 }

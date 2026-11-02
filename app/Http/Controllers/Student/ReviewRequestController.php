@@ -4,26 +4,30 @@ namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ReviewRequestForm;
+use App\Models\ReviewCategory;
 use App\Models\ReviewRequest;
 use Illuminate\Http\Request;
 
 /**
  * Student request management.
  * Rules: a student only sees their own requests, and can only
- * update/delete while the status is pending.
+ * update/delete while the status is Pending.
  */
 class ReviewRequestController extends Controller
 {
     public function index(Request $request)
     {
         return view('student.requests', [
-            'requests' => $request->user()->reviewRequests()->with('student')->latest()->latest('id')->get(),
+            'requests' => $request->user()->reviewRequests()->with(['student', 'category'])->latest()->latest('id')->get(),
         ]);
     }
 
     public function create()
     {
-        return view('student.form', ['reviewRequest' => null]);
+        return view('student.form', [
+            'reviewRequest' => null,
+            'categories' => ReviewCategory::orderBy('id')->get(),
+        ]);
     }
 
     public function store(ReviewRequestForm $form)
@@ -40,11 +44,13 @@ class ReviewRequestController extends Controller
         $reviewRequest = $this->ownRequest($request, $id);
 
         if (! $reviewRequest->isPending()) {
-            return redirect()->route('student.requests.index')
-                ->with('error', "This request has already been {$reviewRequest->status} and can no longer be updated.");
+            return $this->notPending($reviewRequest);
         }
 
-        return view('student.form', compact('reviewRequest'));
+        return view('student.form', [
+            'reviewRequest' => $reviewRequest,
+            'categories' => ReviewCategory::orderBy('id')->get(),
+        ]);
     }
 
     public function update(ReviewRequestForm $form, int $id)
@@ -52,8 +58,7 @@ class ReviewRequestController extends Controller
         $reviewRequest = $this->ownRequest($form, $id);
 
         if (! $reviewRequest->isPending()) {
-            return redirect()->route('student.requests.index')
-                ->with('error', "This request has already been {$reviewRequest->status} and can no longer be updated.");
+            return $this->notPending($reviewRequest);
         }
 
         $data = $form->validated();
@@ -84,5 +89,13 @@ class ReviewRequestController extends Controller
     private function ownRequest(Request $request, int $id): ReviewRequest
     {
         return $request->user()->reviewRequests()->findOrFail($id);
+    }
+
+    private function notPending(ReviewRequest $reviewRequest)
+    {
+        $status = strtolower($reviewRequest->status);
+
+        return redirect()->route('student.requests.index')
+            ->with('error', "This request has already been {$status} and can no longer be updated.");
     }
 }

@@ -6,17 +6,22 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * REVIEW_REQUESTS (ERD): review_request_id (id), user_id, review_category_id, subject_code,
+     * justification, status, processed_by, admin_remarks, processed_at, created_at, updated_at
+     */
     public function up(): void
     {
         Schema::create('review_requests', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('student_id')->constrained('users')->cascadeOnDelete();
-            $table->string('subject_code', 10);
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();          // submits
+            $table->foreignId('review_category_id')->constrained('review_categories');      // classifies
+            $table->string('subject_code');
             $table->text('justification');
-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending')->index();
-            $table->text('admin_comment')->nullable();
-            $table->foreignId('decided_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamp('decided_at')->nullable();
+            $table->enum('status', ['Pending', 'Approved', 'Rejected'])->default('Pending')->index();
+            $table->foreignId('processed_by')->nullable()->constrained('users')->nullOnDelete(); // processes
+            $table->text('admin_remarks')->nullable();
+            $table->timestamp('processed_at')->nullable();
             $table->timestamps();
         });
     }

@@ -7,9 +7,9 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
-    /** Get a seeded user by username. */
-    protected function user(string $username): User
+    /** Get a seeded user by the first part of their email, e.g. 'syamimi' or 'admin'. */
+    protected function user(string $name): User
     {
-        return User::where('username', $username)->firstOrFail();
+        return User::where('email', 'like', $name.'@%')->firstOrFail();
     }
 }

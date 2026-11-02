@@ -13,6 +13,8 @@ class AuthTest extends TestCase
 
     protected $seed = true;
 
+    private const STUDENT = 'syamimi@siswa.upsi.edu.my';
+
     public function test_tc01_guest_is_redirected_to_login(): void
     {
         $this->get('/student/dashboard')->assertRedirect('/');
@@ -21,20 +23,20 @@ class AuthTest extends TestCase
 
     public function test_tc02_wrong_password_shows_error(): void
     {
-        $this->post('/login', ['username' => 'syamimi', 'password' => 'wrong'])
-            ->assertSessionHasErrors(['username' => 'Incorrect username or password.']);
+        $this->post('/login', ['email' => self::STUDENT, 'password' => 'wrong'])
+            ->assertSessionHasErrors(['email' => 'Incorrect email or password.']);
         $this->assertGuest();
     }
 
     public function test_tc03_empty_login_shows_validation(): void
     {
-        $this->post('/login', ['username' => '', 'password' => ''])
-            ->assertSessionHasErrors(['username' => 'Please enter your username and password.']);
+        $this->post('/login', ['email' => '', 'password' => ''])
+            ->assertSessionHasErrors(['email' => 'Please enter your email and password.']);
     }
 
     public function test_tc04_student_login_lands_on_student_dashboard(): void
     {
-        $this->post('/login', ['username' => 'syamimi', 'password' => 'Student@123'])
+        $this->post('/login', ['email' => self::STUDENT, 'password' => 'Student@123'])
             ->assertRedirect('/student/dashboard');
 
         $this->get('/student/dashboard')
@@ -45,15 +47,15 @@ class AuthTest extends TestCase
 
     public function test_tc05_login_locked_after_five_failed_attempts(): void
     {
-        RateLimiter::clear('syamimi|127.0.0.1');
+        RateLimiter::clear(self::STUDENT.'|127.0.0.1');
         for ($i = 0; $i < 5; $i++) {
-            $this->post('/login', ['username' => 'syamimi', 'password' => "wrong{$i}"]);
+            $this->post('/login', ['email' => self::STUDENT, 'password' => "wrong{$i}"]);
         }
 
-        $this->post('/login', ['username' => 'syamimi', 'password' => 'Student@123'])
-            ->assertSessionHasErrors('username');
+        $this->post('/login', ['email' => self::STUDENT, 'password' => 'Student@123'])
+            ->assertSessionHasErrors('email');
         $this->assertGuest();
-        $this->assertStringContainsString('Too many failed attempts', session('errors')->first('username'));
+        $this->assertStringContainsString('Too many failed attempts', session('errors')->first('email'));
     }
 
     public function test_tc06_student_cannot_open_admin_pages(): void

@@ -20,27 +20,28 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $credentials = $request->validate([
-            'username' => ['required', 'string', 'max:50'],
+            'email' => ['required', 'string', 'email', 'max:255'],
             'password' => ['required', 'string'],
         ], [
-            'username.required' => 'Please enter your username and password.',
-            'password.required' => 'Please enter your username and password.',
+            'email.required' => 'Please enter your email and password.',
+            'password.required' => 'Please enter your email and password.',
+            'email.email' => 'Please enter a valid email address.',
         ]);
 
-        // Lock login for 5 minutes after 5 failed attempts (per username + IP)
-        $key = Str::lower($credentials['username']).'|'.$request->ip();
+        // Lock login for 5 minutes after 5 failed attempts (per email + IP)
+        $key = Str::lower($credentials['email']).'|'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
             $minutes = (int) ceil(RateLimiter::availableIn($key) / 60);
 
-            return back()->withInput($request->only('username'))
-                ->withErrors(['username' => "Too many failed attempts. Try again in {$minutes} minute(s)."]);
+            return back()->withInput($request->only('email'))
+                ->withErrors(['email' => "Too many failed attempts. Try again in {$minutes} minute(s)."]);
         }
 
         if (! Auth::attempt($credentials)) {
             RateLimiter::hit($key, self::LOCKOUT_SECONDS);
 
-            return back()->withInput($request->only('username'))
-                ->withErrors(['username' => 'Incorrect username or password.']);
+            return back()->withInput($request->only('email'))
+                ->withErrors(['email' => 'Incorrect email or password.']);
         }
 
         RateLimiter::clear($key);
